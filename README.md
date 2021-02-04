@@ -1,3 +1,12 @@
+# PyPSA-Eur-Sec version for the Aarhus University group
+
+This is the development version of pypsa-eur-sec to be used at Aarhus University running on Prime.
+Currently using pypsa-eur v0.3.0, technology-data v0.2.0 and pypsa-eur-sec v0.4.0 updated to commit 4fd164f73ca77f2e2ec8ea9faeac2ffbfa16be61 with the following version of the data bundle:
+* projects/pypsa-eur-sec/data % ``wget "https://nworbmot.org/pypsa-eur-sec-data-bundle-210125.tar.gz"``
+* projects/pypsa-eur-sec/data % ``tar xvzf pypsa-eur-sec-data-bundle-210125.tar.gz``
+
+
+
 ![GitHub release (latest by date including pre-releases)](https://img.shields.io/github/v/release/pypsa/pypsa-eur-sec?include_prereleases)
 [![Documentation](https://readthedocs.org/projects/pypsa-eur-sec/badge/?version=latest)](https://pypsa-eur-sec.readthedocs.io/en/latest/?badge=latest)
 ![GitHub](https://img.shields.io/github/license/pypsa/pypsa-eur-sec)
