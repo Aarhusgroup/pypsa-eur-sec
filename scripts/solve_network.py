@@ -299,8 +299,8 @@ def solve_network(n, config=None, solver_log=None, opts=None):
     solve_opts = config['options']
 
     solver_options = config['solver'].copy()
-    #if solver_log is None:
-    #    solver_log = snakemake.log.solver
+    if solver_log is None:
+        solver_log = snakemake.log.solver
     solver_name = solver_options.pop('name')
 
     def run_lopf(n, allow_warning_status=False, fix_zero_lines=False, fix_ext_lines=False):
@@ -344,7 +344,7 @@ def solve_network(n, config=None, solver_log=None, opts=None):
 
         status, termination_condition = n.lopf(pyomo=False,
                                                solver_name=solver_name,
-                                               #solver_logfile=solver_log,
+                                               solver_logfile=solver_log,
                                                solver_options=solver_options,
                                                solver_dir=tmpdir, 
                                                extra_functionality=extra_functionality,
