@@ -259,9 +259,12 @@ def add_local_co2_constraints(network, snapshots, local_emis):
         const = const * efficiencies
 
         if country == 'EU':
-            id_load_co2 = network.loads.query('bus == "co2 atmosphere"').index
-            co2_load = network.loads_t.p[id_load_co2].sum().sum()
-            local_emis[country] += co2_load
+            try:
+                id_load_co2 = network.loads.query('bus == "co2 atmosphere"').index
+                co2_load = network.loads_t.p[id_load_co2].sum().sum()
+                local_emis[country] += co2_load
+            except:
+                pass
 
 
         expr = linexpr((const,variables)).sum().sum()
@@ -296,8 +299,8 @@ def solve_network(n, config=None, solver_log=None, opts=None):
     solve_opts = config['options']
 
     solver_options = config['solver'].copy()
-    if solver_log is None:
-        solver_log = snakemake.log.solver
+    #if solver_log is None:
+    #    solver_log = snakemake.log.solver
     solver_name = solver_options.pop('name')
 
     def run_lopf(n, allow_warning_status=False, fix_zero_lines=False, fix_ext_lines=False):
@@ -341,7 +344,7 @@ def solve_network(n, config=None, solver_log=None, opts=None):
 
         status, termination_condition = n.lopf(pyomo=False,
                                                solver_name=solver_name,
-                                               solver_logfile=solver_log,
+                                               #solver_logfile=solver_log,
                                                solver_options=solver_options,
                                                solver_dir=tmpdir, 
                                                extra_functionality=extra_functionality,
@@ -445,7 +448,7 @@ if __name__ == "__main__":
         from vresutils.snakemake import MockSnakemake, Dict
         snakemake = MockSnakemake(
             wildcards=dict(network='elec', simpl='', clusters='37', lv='1.5',
-                           sector_opts='Co2L0p25-3H-solar+p3-dist1',
+                           sector_opts='Co2L0p25-3H-T-H-B-I-solar+p3-dist1',
                            co2_budget_name='', planning_horizons='2030'),
             input=dict(network="pypsa-eur-sec/results/test_run/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc"),
             output=["results/networks/s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}-test.nc"],
