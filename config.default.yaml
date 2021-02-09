@@ -33,6 +33,43 @@ scenario:
   planning_horizons : [2030] # investment years for myopic and perfect; or costs year for overnight
   # for example, set to [2020, 2030, 2040, 2050] for myopic foresight
 
+use_local_co2_constraints: true
+local_emission_constraints: 
+  EU: 0 
+  AL: 0 
+  AT: 0 
+  BA: 0 
+  BE: 0 
+  BG: 0 
+  CH: 0 
+  CZ: 0 
+  DE: 0 
+  DK: 0 
+  EE: 0 
+  ES: 0 
+  FI: 0 
+  FR: 0
+  GB: 0 
+  GR: 0 
+  HR: 0 
+  HU: 0 
+  IE: 0 
+  IT: 0 
+  LT: 0 
+  LU: 0 
+  LV: 0 
+  ME: 0 
+  MK: 0 
+  NL: 0 
+  NO: 0 
+  PL: 0
+  PT: 0 
+  RO: 0 
+  RS: 0 
+  SE: 0 
+  SI: 0 
+  SK: 0 
+
 # CO2 budget as a fraction of 1990 emissions
 # this is over-ridden if CO2Lx is set in sector_opts
 # this is also over-ridden if cb is set in sector_opts

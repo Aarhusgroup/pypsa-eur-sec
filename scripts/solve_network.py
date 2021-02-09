@@ -204,11 +204,82 @@ def add_land_use_constraint(n):
 
     n.generators.p_nom_max[n.generators.p_nom_max<0]=0.
 
+
+def set_link_locations(network):
+    network.links['location'] = ""
+
+    query_string = lambda x : f'bus0 == "{x}" | bus1 == "{x}" | bus2 == "{x}" | bus3 == "{x}" | bus4 == "{x}"'
+    id_co2_links = network.links.query(query_string('co2 atmosphere')).index
+
+    country_codes = network.buses.country.unique()
+    country_codes = country_codes[:-1]
+
+    # Find all busses assosiated with the model countries 
+    country_buses = {code : [] for code in country_codes}
+    for country in country_codes:
+        country_nodes = list(network.buses.query('country == "{}"'.format(country)).index)
+        for bus in country_nodes:
+            country_buses[country].extend(list(network.buses.query('location == "{}"'.format(bus)).index))
+
+    # Set the location of all links connection to co2 atmosphere 
+    for country in country_buses:
+        for bus in country_buses[country]:
+            idx = network.links.loc[id_co2_links].query(query_string(bus))['location'].index
+            network.links.loc[idx,'location'] = country
+
+    # Links connecting to co2 atmosphere without known location are set to belong to EU
+    idx_homeless = network.links.query(query_string('co2 atmosphere')).query('location == ""').index
+    network.links.loc[idx_homeless,'location'] = 'EU'
+    return network
+
+def add_local_co2_constraints(network, snapshots, local_emis):
+
+    efficiency_dict = dict(bus1 = 'efficiency',bus2 = 'efficiency2', bus3 = 'efficiency3' , bus='efficiency4')
+    query_string = lambda x : f'bus0 == "{x}" | bus1 == "{x}" | bus2 == "{x}" | bus3 == "{x}" | bus4 == "{x}"'
+    id_co2_links = network.links.query(query_string('co2 atmosphere')).index
+
+    country_codes = network.links.loc[id_co2_links].location.unique()
+
+    for country in country_codes:
+        idx = network.links.query(f'location == "{country}"').index
+        variables = get_var(network,'Link','p').loc[:,idx].values
+
+        efficiencies = []
+        for link_id in idx:
+            co2_bus = network.links.loc[link_id][network.links.loc[link_id] == 'co2 atmosphere'].index[0]
+            if co2_bus == 'bus0':
+                efficiency = -1 
+            else : 
+                efficiency = network.links.loc[link_id,efficiency_dict[co2_bus]]
+            efficiencies.append(efficiency)        
+
+
+        const = np.ones(variables.shape)
+        const = (const.T * np.array(network.snapshot_weightings)).T
+        const = const * efficiencies
+
+        if country == 'EU':
+            id_load_co2 = network.loads.query('bus == "co2 atmosphere"').index
+            co2_load = network.loads_t.p[id_load_co2].sum().sum()
+            local_emis[country] += co2_load
+
+
+        expr = linexpr((const,variables)).sum().sum()
+
+        define_constraints(network,expr,'<=',local_emis[country],'national_co2','{}'.format(country))
+
+
+
 def extra_functionality(n, snapshots):
     #add_opts_constraints(n, opts)
     #add_eps_storage_constraint(n)
     add_chp_constraints(n)
     add_battery_constraints(n)
+
+    if snakemake.config['use_local_co2_constraints']:
+        n = set_link_locations(n)
+        local_emis = snakemake.config['local_emission_constraints']
+        add_local_co2_constraints(n, snapshots, local_emis)
 
 
 def fix_branches(n, lines_s_nom=None, links_p_nom=None):
@@ -373,10 +444,10 @@ if __name__ == "__main__":
     if 'snakemake' not in globals():
         from vresutils.snakemake import MockSnakemake, Dict
         snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='39', lv='1.0',
-                           sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
-                           co2_budget_name='b30b3', planning_horizons='2050'),
-            input=dict(network="pypsa-eur-sec/results/test/prenetworks_brownfield/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc"),
+            wildcards=dict(network='elec', simpl='', clusters='37', lv='1.5',
+                           sector_opts='Co2L0p25-3H-solar+p3-dist1',
+                           co2_budget_name='', planning_horizons='2030'),
+            input=dict(network="pypsa-eur-sec/results/test_run/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc"),
             output=["results/networks/s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}-test.nc"],
             log=dict(gurobi="logs/{network}_s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}_gurobi-test.log",
                      python="logs/{network}_s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}_python-test.log")
