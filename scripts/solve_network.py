@@ -207,12 +207,11 @@ def add_land_use_constraint(n):
 
 def set_link_locations(network):
     network.links['location'] = ""
-
     query_string = lambda x : f'bus0 == "{x}" | bus1 == "{x}" | bus2 == "{x}" | bus3 == "{x}" | bus4 == "{x}"'
     id_co2_links = network.links.query(query_string('co2 atmosphere')).index
 
     country_codes = network.buses.country.unique()
-    country_codes = country_codes[:-1]
+    country_codes = country_codes[:-1]  # remove the empty string "" from the array. 
 
     # Find all busses assosiated with the model countries 
     country_buses = {code : [] for code in country_codes}
@@ -253,7 +252,6 @@ def add_local_co2_constraints(network, snapshots, local_emis):
                 efficiency = network.links.loc[link_id,efficiency_dict[co2_bus]]
             efficiencies.append(efficiency)        
 
-
         const = np.ones(variables.shape)
         const = (const.T * np.array(network.snapshot_weightings)).T
         const = const * efficiencies
@@ -261,16 +259,20 @@ def add_local_co2_constraints(network, snapshots, local_emis):
         if country == 'EU':
             try:
                 id_load_co2 = network.loads.query('bus == "co2 atmosphere"').index
-                co2_load = network.loads_t.p[id_load_co2].sum().sum()
+                co2_load = network.loads.p_set[id_load_co2].sum().sum()
                 local_emis[country] += co2_load
             except:
                 pass
 
+        # Fix snakemake parse error for Norway ('NO' parsed as False):
+        if country == 'NO':
+            try:
+                local_emis[country]
+            except:
+                local_emis.update({'NO':local_emis[False]})
 
         expr = linexpr((const,variables)).sum().sum()
-
         define_constraints(network,expr,'<=',local_emis[country],'national_co2','{}'.format(country))
-
 
 
 def extra_functionality(n, snapshots):
