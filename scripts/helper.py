@@ -39,9 +39,9 @@ def get_country_emis(network):
 
         if country == 'EU':
             id_load_co2 = network.loads.query('bus == "co2 atmosphere"').index
-            co2_load = network.loads_t.p[id_load_co2].sum().sum()
+            co2_load = network.loads.p_set[id_load_co2].sum().sum()*sum(network.snapshot_weightings)
             country_emis[country] -= co2_load
 
-        total_emis = np.sum(list(country_emis.values())) 
+        #total_emis = np.sum(list(country_emis.values())) 
     
     return country_emis

@@ -259,7 +259,7 @@ def add_local_co2_constraints(network, snapshots, local_emis):
         if country == 'EU':
             try:
                 id_load_co2 = network.loads.query('bus == "co2 atmosphere"').index
-                co2_load = network.loads.p_set[id_load_co2].sum().sum()
+                co2_load = network.loads.p_set[id_load_co2].sum().sum()*sum(network.snapshot_weightings)
                 local_emis[country] += co2_load
             except:
                 pass
