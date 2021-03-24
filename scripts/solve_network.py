@@ -128,14 +128,12 @@ def add_battery_constraints(n):
 
 
 def add_chp_constraints(n):
-
     electric_bool = (n.links.index.str.contains("urban central")
                      & n.links.index.str.contains("CHP")
                      & n.links.index.str.contains("electric"))
     heat_bool = (n.links.index.str.contains("urban central")
                  & n.links.index.str.contains("CHP")
                  & n.links.index.str.contains("heat"))
-
     electric = n.links.index[electric_bool]
     heat = n.links.index[heat_bool]
     electric_ext = n.links.index[electric_bool & n.links.p_nom_extendable]
@@ -143,9 +141,7 @@ def add_chp_constraints(n):
     electric_fix = n.links.index[electric_bool & ~n.links.p_nom_extendable]
     heat_fix = n.links.index[heat_bool & ~n.links.p_nom_extendable]
 
-
     if not electric_ext.empty:
-
         link_p_nom = get_var(n, "Link", "p_nom")
 
         #ratio of output heat to electricity set by p_nom_ratio
@@ -156,9 +152,7 @@ def add_chp_constraints(n):
                        link_p_nom[heat_ext].values))
         define_constraints(n, lhs, "=", 0, 'chplink', 'fix_p_nom_ratio')
 
-
     if not electric.empty:
-
         link_p = get_var(n, "Link", "p")
 
         #backpressure
@@ -170,9 +164,7 @@ def add_chp_constraints(n):
 
         define_constraints(n, lhs, "<=", 0, 'chplink', 'backpressure')
 
-
     if not electric_ext.empty:
-
         link_p_nom = get_var(n, "Link", "p_nom")
         link_p = get_var(n, "Link", "p")
 
@@ -183,9 +175,7 @@ def add_chp_constraints(n):
 
         define_constraints(n, lhs, "<=", 0, 'chplink', 'top_iso_fuel_line_ext')
 
-
     if not electric_fix.empty:
-
         link_p = get_var(n, "Link", "p")
 
         #top_iso_fuel_line for fixed
@@ -194,8 +184,8 @@ def add_chp_constraints(n):
 
         define_constraints(n, lhs, "<=", n.links.loc[electric_fix,"p_nom"].values, 'chplink', 'top_iso_fuel_line_fix')
 
-def add_land_use_constraint(n):
 
+def add_land_use_constraint(n):
     #warning: this will miss existing offwind which is not classed AC-DC and has carrier 'offwind'
     for carrier in ['solar', 'onwind', 'offwind-ac', 'offwind-dc']:
         existing_capacities = n.generators.loc[n.generators.carrier==carrier,"p_nom"].groupby(n.generators.bus.map(n.buses.location)).sum()
@@ -232,7 +222,6 @@ def set_link_locations(network):
     return network
 
 def add_local_co2_constraints(network, snapshots, local_emis):
-
     efficiency_dict = dict(bus1 = 'efficiency',bus2 = 'efficiency2', bus3 = 'efficiency3' , bus='efficiency4')
     query_string = lambda x : f'bus0 == "{x}" | bus1 == "{x}" | bus2 == "{x}" | bus3 == "{x}" | bus4 == "{x}"'
     id_co2_links = network.links.query(query_string('co2 atmosphere')).index
@@ -264,13 +253,6 @@ def add_local_co2_constraints(network, snapshots, local_emis):
             except:
                 pass
 
-        # Fix snakemake parse error for Norway ('NO' parsed as False):
-        if country == 'NO':
-            try:
-                local_emis[country]
-            except:
-                local_emis.update({'NO':local_emis[False]})
-
         expr = linexpr((const,variables)).sum().sum()
         define_constraints(network,expr,'<=',local_emis[country],'national_co2','{}'.format(country))
 
@@ -294,6 +276,7 @@ def fix_branches(n, lines_s_nom=None, links_p_nom=None):
     if links_p_nom is not None and len(links_p_nom) > 0:
         n.links.loc[links_p_nom.index,"p_nom"] = links_p_nom.values
         n.links.loc[links_p_nom.index,"p_nom_extendable"] = False
+
 
 def solve_network(n, config=None, solver_log=None, opts=None):
     if config is None:
@@ -332,7 +315,6 @@ def solve_network(n, config=None, solver_log=None, opts=None):
                           sense="<=",
                           constant=line_volume)
 
-
         # Firing up solve will increase memory consumption tremendously, so
         # make sure we freed everything we can
         gc.collect()
@@ -342,7 +324,6 @@ def solve_network(n, config=None, solver_log=None, opts=None):
         #n.model.write('/home/ka/ka_iai/ka_kc5996/projects/pypsa-eur/128-B-I.mps', format=ProblemFormat.mps)
         #print("Model is saved to MPS")
         #sys.exit()
-
 
         status, termination_condition = n.lopf(pyomo=False,
                                                solver_name=solver_name,
@@ -441,8 +422,8 @@ def solve_network(n, config=None, solver_log=None, opts=None):
     # if len(zero_links_i):
     #     n.mremove("Link", zero_links_i)
 
-
     return n
+
 
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
