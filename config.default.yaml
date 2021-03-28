@@ -34,12 +34,9 @@ scenario:
   # for example, set to [2020, 2030, 2040, 2050] for myopic foresight
 
 # if use_local_co2_constraints is set to true, it is possible to specify national co2 emission constraints 
-# The emissions are specified in Tco2. negative emissions can be set as carbon capture is included in the calculations
-# The EU part, covers all emissions not directly located in a country, such as carbon leakage from co2 storage 
-# To see local emissions use the function get_country_emissions function located in helper.py 
+# The emissions are specified in tCO2. Negative emissions can be set as carbon capture is included in the calculations
 use_local_co2_constraints: true
 local_emission_constraints: 
-  'EU': 3000000 
   'AL': 0 
   'AT': 0 
   'BA': 0 
