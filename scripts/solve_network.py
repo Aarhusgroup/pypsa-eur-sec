@@ -222,39 +222,49 @@ def set_link_locations(network):
     return network
 
 def add_local_co2_constraints(network, snapshots, local_emis):
-    efficiency_dict = dict(bus1 = 'efficiency',bus2 = 'efficiency2', bus3 = 'efficiency3' , bus='efficiency4')
+    '''Give emission cap as absolute value per country. 
+    The EU bus emissions are allocated to the countries based on their population density.'''
+    efficiency_dict = dict(bus1 = 'efficiency', bus2 = 'efficiency2', bus3 = 'efficiency3', bus='efficiency4')
     query_string = lambda x : f'bus0 == "{x}" | bus1 == "{x}" | bus2 == "{x}" | bus3 == "{x}" | bus4 == "{x}"'
-    id_co2_links = network.links.query(query_string('co2 atmosphere')).index
+    co2_links = network.links.query(query_string('co2 atmosphere'))
+    co2_links_countries = network.links.loc[co2_links.index].location.unique()
 
-    country_codes = network.links.loc[id_co2_links].location.unique()
-
-    for country in country_codes:
-        idx = network.links.query(f'location == "{country}"').index
+    co2_links_countries = [i for i in co2_links_countries.tolist() if not i=='EU']
+    co2_EU_links = co2_links.loc[co2_links.location == "EU"]        
+    variables_EU = get_var(network,'Link','p').loc[:,co2_EU_links.index].values
+    efficiencies_EU = []
+    for link_id in co2_EU_links.index:
+        co2_EU_bus = network.links.loc[link_id][network.links.loc[link_id] == 'co2 atmosphere'].index[0]
+        if co2_EU_bus == 'bus0':
+            efficiency = -1 
+        else : 
+            efficiency = network.links.loc[link_id,efficiency_dict[co2_EU_bus]]
+        efficiencies_EU.append(efficiency)
+    const_EU = np.ones(variables_EU.shape)
+    const_EU = (const_EU.T * np.array(network.snapshot_weightings)).T
+    const_EU = const_EU * efficiencies_EU
+    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout,index_col=0)
+    pop_layout["ct"] = pop_layout.index.str[:2]
+    pop_layout_b = pop_layout.groupby(pop_layout.ct).sum().total
+    pop_layout_b = pop_layout_b.loc[co2_links_countries]
+    share = pop_layout_b / pop_layout_b.sum()
+    
+    for country in co2_links_countries: 
+        idx = network.links.query('location == "{}"'.format(country)).index
         variables = get_var(network,'Link','p').loc[:,idx].values
-
         efficiencies = []
         for link_id in idx:
             co2_bus = network.links.loc[link_id][network.links.loc[link_id] == 'co2 atmosphere'].index[0]
             if co2_bus == 'bus0':
-                efficiency = -1 
-            else : 
+                efficiency = -1
+            else:
                 efficiency = network.links.loc[link_id,efficiency_dict[co2_bus]]
-            efficiencies.append(efficiency)        
-
+            efficiencies.append(efficiency)
         const = np.ones(variables.shape)
         const = (const.T * np.array(network.snapshot_weightings)).T
         const = const * efficiencies
-
-        if country == 'EU':
-            try:
-                id_load_co2 = network.loads.query('bus == "co2 atmosphere"').index
-                co2_load = network.loads.p_set[id_load_co2].sum().sum()*sum(network.snapshot_weightings)
-                local_emis[country] += co2_load
-            except:
-                pass
-
-        expr = linexpr((const,variables)).sum().sum()
-        define_constraints(network,expr,'<=',local_emis[country],'national_co2','{}'.format(country))
+        expr = linexpr((const,variables)).sum().sum() + linexpr((const_EU*share[country],variables_EU)).sum().sum()
+        define_constraints(network,expr,'<=',local_emis[country],'national_co2_constr','co2_const_{}'.format(country))
 
 
 def extra_functionality(n, snapshots):
